@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سیستم لاگین امن</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:Tahoma,sans-serif; }
+  body { min-height:100vh; display:flex; justify-content:center; align-items:center;
+         background:linear-gradient(135deg,#0f2027,#203a43,#2c5364); padding:20px; }
+  .container { background:#fff; padding:40px 35px; border-radius:15px;
+               box-shadow:0 15px 40px rgba(0,0,0,0.5); width:460px; max-width:100%; }
+  h2 { text-align:center; color:#1e3c72; margin-bottom:25px; font-size:22px; }
+  .input-group { margin-bottom:15px; }
+  .input-group label { display:block; margin-bottom:6px; color:#444; font-size:14px; }
+  .input-group input { width:100%; padding:12px; border:2px solid #ddd;
+                       border-radius:8px; font-size:15px; direction:ltr; text-align:left;
+                       font-family:monospace; }
+  .input-group input:focus { outline:none; border-color:#2a5298; }
+  .btn { width:100%; padding:12px; background:linear-gradient(135deg,#1e3c72,#2a5298);
+         color:#fff; border:none; border-radius:8px; font-size:16px; cursor:pointer;
+         margin-top:10px; transition:0.3s; }
+  .btn:hover { transform:translateY(-2px); box-shadow:0 8px 20px rgba(30,60,114,0.4); }
+  .btn-green { background:linear-gradient(135deg,#11998e,#38ef7d); }
+  .btn-red { background:linear-gradient(135deg,#c0392b,#e74c3c); }
+  .btn-sm { width:auto; padding:6px 12px; font-size:12px; margin:0; }
+  .link { text-align:center; margin-top:15px; font-size:13px; color:#666;
+          cursor:pointer; text-decoration:underline; }
+  .msg { text-align:center; margin-top:12px; font-size:13px; min-height:18px;
+         line-height:1.6; }
+  .msg.error { color:#e74c3c; }
+  .msg.success { color:#27ae60; }
+  .msg.info { color:#2a5298; }
+  .hidden { display:none !important; }
+  .admin-panel { width:800px; max-width:100%; }
+  .header { display:flex; justify-content:space-between; align-items:center;
+            margin-bottom:20px; border-bottom:2px solid #eee; padding-bottom:15px; gap:10px; }
+  .header h2 { margin:0; font-size:20px; }
+  .section-title { margin:20px 0 10px; color:#333; font-size:15px;
+                   border-right:3px solid #2a5298; padding-right:10px; }
+  .toggle-type { display:flex; gap:10px; margin:15px 0; justify-content:center; }
+  .toggle-type label { padding:8px 16px; border:2px solid #ddd; border-radius:8px;
+                       cursor:pointer; font-size:14px; }
+  .toggle-type input { display:none; }
+  .toggle-type label:has(input:checked) { background:#2a5298; border-color:#2a5298; color:#fff; }
+  .item { background:#f7f9fc; padding:12px 15px; border-radius:8px;
+          margin-bottom:10px; display:flex; justify-content:space-between;
+          align-items:center; font-size:13px; border-left:4px solid #2a5298;
+          direction:ltr; text-align:left; gap:10px; flex-wrap:wrap; }
+  .item.used { border-left-color:#e74c3c; opacity:0.85; }
+  .code { font-family:monospace; font-weight:bold; color:#1e3c72; font-size:14px; }
+  .type { background:#2a5298; color:#fff; padding:3px 8px; border-radius:5px; font-size:11px; }
+  .type.unlimited { background:#27ae60; }
+  .tabs { display:flex; gap:5px; margin-bottom:15px; border-bottom:2px solid #eee; }
+  .tab { padding:10px 15px; cursor:pointer; font-size:14px; color:#666;
+         border-bottom:3px solid transparent; }
+  .tab.active { color:#1e3c72; border-bottom-color:#1e3c72; font-weight:bold; }
+  .empty { text-align:center; color:#999; padding:20px; font-size:13px; }
+  .row-actions { display:flex; gap:6px; flex-wrap:wrap; }
+  .backup-actions { display:flex; gap:10px; flex-wrap:wrap; }
+  .note { font-size:12px; color:#888; text-align:center; margin-top:15px; line-height:1.8; }
+  .security-badge { display:inline-block; background:#27ae60; color:#fff;
+                    padding:3px 8px; border-radius:5px; font-size:10px; margin:0 3px; }
+  .key-display { background:#fff3cd; border:2px solid #ffc107; padding:12px;
+                 border-radius:8px; font-family:monospace; font-size:13px;
+                 word-break:break-all; margin:10px 0; direction:ltr; text-align:left; }
+  .warning { background:#f8d7da; border:2px solid #dc3545; padding:12px;
+             border-radius:8px; font-size:13px; color:#721c24; line-height:1.8;
+             margin:10px 0; }
+</style>
+</head>
+<body>
+
+<!-- ============ صفحه لاگین ============ -->
+<div class="container" id="loginPage">
+  <h2>🔐 ورود به سیستم</h2>
+  <div class="input-group"><label>نام کاربری</label>
+    <input type="text" id="loginUsername" placeholder="Username" autocomplete="username"></div>
+  <div class="input-group"><label>رمز عبور</label>
+    <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password"></div>
+  <button class="btn" onclick="doLogin()">ورود</button>
+  <div class="msg" id="loginMsg"></div>
+  <div class="link" onclick="showPage('registerPage')">اکانت ندارم؟ ثبت‌نام با لایسنس</div>
+  <div class="note">
+    <span class="security-badge">🔒 AES-256</span>
+    <span class="security-badge">🔑 PBKDF2</span>
+    داده‌ها رمزنگاری‌شده ذخیره می‌شن
+  </div>
+</div>
+
+<!-- ============ صفحه Master Key (ادمین) ============ -->
+<div class="container hidden" id="masterKeyPage">
+  <h2>🔑 کلید اصلی (Master Key)</h2>
+  <p style="font-size:13px;color:#666;text-align:center;margin-bottom:20px;line-height:1.8;">
+    برای باز کردن داده‌های رمزنگاری‌شده، کلید اصلی رو وارد کن.
+  </p>
+  <div class="input-group"><label>Master Key</label>
+    <input type="password" id="masterKeyInput" placeholder="کلید اصلی..." autocomplete="off"></div>
+  <button class="btn btn-green" onclick="unlockWithKey()">🔓 باز کردن</button>
+  <div class="msg" id="keyMsg"></div>
+  <div class="link" onclick="logout()">بازگشت</div>
+</div>
+
+<!-- ============ صفحه ساخت Master Key (بار اول) ============ -->
+<div class="container hidden" id="setupKeyPage">
+  <h2>🎉 راه‌اندازی اولیه</h2>
+  <p style="font-size:13px;color:#666;text-align:center;margin-bottom:20px;line-height:1.8;">
+    این اولین باریه که سیستم رو راه‌اندازی می‌کنی.<br>
+    یه <b>Master Key</b> قوی بساز.
+  </p>
+
+  <div class="warning">
+    ⚠️ <b>هشدار خیلی مهم:</b><br>
+    این کلید رو <b>جای امن</b> نگه دار (کاغذ + فایل).<br>
+    اگه گمش کنی، <b>هیچ راهی</b> برای باز کردن داده‌ها نیست!
+  </div>
+
+  <div class="input-group"><label>Master Key (حداقل ۱۲ کاراکتر)</label>
+    <input type="password" id="setupKey1" placeholder="کلید قوی..." autocomplete="off"></div>
+  <div class="input-group"><label>تکرار Master Key</label>
+    <input type="password" id="setupKey2" placeholder="دوباره وارد کن..." autocomplete="off"></div>
+  <button class="btn btn-green" onclick="setupMasterKey()">✨ ساخت و راه‌اندازی</button>
+  <div class="msg" id="setupMsg"></div>
+</div>
+
+<!-- ============ ثبت‌نام کاربر ============ -->
+<div class="container hidden" id="registerPage">
+  <h2>📝 ثبت‌نام با لایسنس</h2>
+  <div class="input-group"><label>کد لایسنس</label>
+    <input type="text" id="regLicense" placeholder="XXXX-XXXX-XXXX-XXXX"></div>
+  <div class="input-group"><label>نام کاربری جدید</label>
+    <input type="text" id="regUsername" placeholder="Username"></div>
+  <div class="input-group"><label>رمز عبور جدید</label>
+    <input type="password" id="regPassword" placeholder="Password"></div>
+  <button class="btn btn-green" onclick="doRegister()">ثبت‌نام</button>
+  <div class="msg" id="regMsg"></div>
+  <div class="link" onclick="showPage('loginPage')">بازگشت به صفحه ورود</div>
+</div>
+
+<!-- ============ پنل کاربر ============ -->
+<div class="container hidden" id="userPage">
+  <div class="header">
+    <h2>👤 پنل کاربر</h2>
+    <button class="btn btn-red btn-sm" onclick="logout()">خروج</button>
+  </div>
+  <div id="userInfo"></div>
+</div>
+
+<!-- ============ پنل ادمین ============ -->
+<div class="container admin-panel hidden" id="adminPage">
+  <div class="header">
+    <h2>👑 پنل ادمین <span class="security-badge">🔓 باز</span></h2>
+    <button class="btn btn-red btn-sm" onclick="logout()">خروج</button>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="licenses" onclick="switchTab('licenses')">لایسنس‌ها</div>
+    <div class="tab" data-tab="users" onclick="switchTab('users')">کاربران</div>
+    <div class="tab" data-tab="backup" onclick="switchTab('backup')">بکاپ</div>
+    <div class="tab" data-tab="security" onclick="switchTab('security')">امنیت</div>
+  </div>
+
+  <div id="tab-licenses">
+    <div class="section-title">تولید لایسنس جدید</div>
+    <div class="toggle-type">
+      <label><input type="radio" name="licType" value="single" checked><span>تک‌کاربره</span></label>
+      <label><input type="radio" name="licType" value="unlimited"><span>نامحدود</span></label>
+    </div>
+    <button class="btn btn-green" onclick="generateLicense()">➕ تولید لایسنس</button>
+    <div class="msg" id="adminMsg"></div>
+    <div class="section-title">لیست لایسنس‌ها</div>
+    <div id="licenseList"></div>
+  </div>
+
+  <div id="tab-users" class="hidden">
+    <div class="section-title">لیست کاربران</div>
+    <div id="userList"></div>
+  </div>
+
+  <div id="tab-backup" class="hidden">
+    <div class="section-title">پشتیبان‌گیری / بازیابی</div>
+    <p style="font-size:13px;color:#666;margin-bottom:15px;line-height:1.8;">
+      فایل بکاپ هم <b>رمزنگاری‌شده</b> هست و فقط با Master Key باز می‌شه.
+    </p>
+    <div class="backup-actions">
+      <button class="btn btn-green" style="width:auto;" onclick="downloadBackup()">⬇️ دانلود بکاپ رمزنگاری‌شده</button>
+      <label class="btn" style="width:auto;cursor:pointer;text-align:center;">
+        ⬆️ بارگذاری بکاپ
+        <input type="file" accept=".json,.enc" style="display:none;" onchange="uploadBackup(event)">
+      </label>
+    </div>
+    <div class="msg" id="backupMsg"></div>
+  </div>
+
+  <div id="tab-security" class="hidden">
+    <div class="section-title">وضعیت امنیتی</div>
+    <div class="item" style="border-left-color:#27ae60;">
+      <div>
+        <div style="font-weight:bold;color:#1e3c72;">🔒 الگوریتم رمزنگاری</div>
+        <div style="font-size:12px;color:#666;margin-top:4px;">AES-256-GCM + PBKDF2 (۲۰۰,۰۰۰ تکرار)</div>
+      </div>
+      <span class="type unlimited">فعال</span>
+    </div>
+    <div class="item" style="border-left-color:#27ae60;">
+      <div>
+        <div style="font-weight:bold;color:#1e3c72;">🔑 Master Key</div>
+        <div style="font-size:12px;color:#666;margin-top:4px;">در حال حاضر در RAM ذخیره شده</div>
+      </div>
+      <span class="type unlimited">باز</span>
+    </div>
+    <div class="item" style="border-left-color:#ffc107;">
+      <div>
+        <div style="font-weight:bold;color:#1e3c72;">⏱ زمان باز شدن کلید</div>
+        <div style="font-size:12px;color:#666;margin-top:4px;" id="keyTimeInfo">-</div>
+      </div>
+    </div>
+
+    <div class="section-title">تغییر Master Key</div>
+    <div class="input-group"><label>Master Key فعلی</label>
+      <input type="password" id="oldKey" placeholder="کلید فعلی..."></div>
+    <div class="input-group"><label>Master Key جدید</label>
+      <input type="password" id="newKey1" placeholder="کلید جدید..."></div>
+    <div class="input-group"><label>تکرار Master Key جدید</label>
+      <input type="password" id="newKey2" placeholder="دوباره..."></div>
+    <button class="btn btn-red" onclick="changeMasterKey()">🔁 تغییر کلید</button>
+    <div class="msg" id="changeKeyMsg"></div>
+
+    <div class="section-title">قفل کردن دستی</div>
+    <button class="btn btn-red" onclick="lockPanel()">🔒 قفل کردن پنل</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   ⚙️ تنظیمات
+   ============================================================ */
+const ADMIN_USERNAME = "admin";
+const ADMIN_PASSWORD = "admin1234";  // ← عوضش کن
+/* ============================================================ */
+
+const STORAGE_KEYS = {
+  DATA: 'secure_data_v1',      // داده‌های رمزنگاری‌شده
+  KEY_CHECK: 'secure_key_check', // برای چک کردن درست بودن کلید
+  SESSION: 'secure_session'
+};
+
+/* ==================== رمزنگاری ==================== */
+async function deriveKey(masterKey, salt) {
+  const enc = new TextEncoder();
+  const baseKey = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(masterKey),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits', 'deriveKey']
+  );
+
+  return crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: salt,
+      iterations: 200000,
+      hash: 'SHA-256'
+    },
+    baseKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+function bufToBase64(buf) {
+  const bytes = new Uint8Array(buf);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+function base64ToBuf(b64) {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+function randomBytes(n) {
+  return crypto.getRandomValues(new Uint8Array(n));
+}
+
+async function encrypt(data, masterKey) {
+  const salt = randomBytes(16);
+  const iv = randomBytes(12);
+  const key = await deriveKey(masterKey, salt);
+  const enc = new TextEncoder();
+  const plaintext = enc.encode(JSON.stringify(data));
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plaintext);
+
+  return JSON.stringify({
+    v: 1,
+    salt: bufToBase64(salt),
+    iv: bufToBase64(iv),
+    ct: bufToBase64(ciphertext)
+  });
+}
+
+async function decrypt(encryptedStr, masterKey) {
+  const { salt, iv, ct } = JSON.parse(encryptedStr);
+  const key = await deriveKey(masterKey, base64ToBuf(salt));
+  const plaintext = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: base64ToBuf(iv) },
+    key,
+    base64ToBuf(ct)
+  );
+  return JSON.parse(new TextDecoder().decode(plaintext));
+}
+
+/* ==================== Fingerprint ==================== */
+async function getHWID() {
+  const parts = [
+    navigator.userAgent,
+    navigator.language,
+    navigator.platform,
+    screen.width + 'x' + screen.height,
+    screen.colorDepth,
+    new Date().getTimezoneOffset(),
+    navigator.hardwareConcurrency || 0,
+    navigator.deviceMemory || 0
+  ];
+
+  try {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.textBaseline = 'top';
+    ctx.font = '14px Arial';
+    ctx.fillStyle = '#f60';
+    ctx.fillRect(125, 1, 62, 20);
+    ctx.fillStyle = '#069';
+    ctx.fillText('HWID-fingerprint', 2, 15);
+    ctx.fillStyle = 'rgba(102,204,0,0.7)';
+    ctx.fillText('HWID-fingerprint', 4, 17);
+    parts.push(canvas.toDataURL().slice(-100));
+  } catch {}
+
+  try {
+    const gl = document.createElement('canvas').getContext('webgl');
+    const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+    if (dbg) {
+      parts.push(gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL));
+      parts.push(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL));
+    }
+  } catch {}
+
+  const raw = parts.join('|');
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+/* ==================== داده ==================== */
+let CURRENT_DATA = null;    // داده‌های رمزگشایی‌شده در RAM
+let CURRENT_KEY = null;     // Master Key در RAM
+let KEY_UNLOCKED_AT = null;
+
+async function loadData(masterKey) {
+  const enc = localStorage.getItem(STORAGE_KEYS.DATA);
+  if (!enc) {
+    return { users: [], licenses: [] };
+  }
+  return await decrypt(enc, masterKey);
+}
+
+async function saveData(data, masterKey) {
+  const encrypted = await encrypt(data, masterKey);
+  localStorage.setItem(STORAGE_KEYS.DATA, encrypted);
+}
+
+function keyCheckHash(masterKey) {
+  // برای چک کردن درست بودن کلید بدون رمزگشایی
+  let h = 0;
+  for (let i = 0; i < masterKey.length; i++) {
+    h = ((h << 5) - h) + masterKey.charCodeAt(i);
+    h |= 0;
+  }
+  return String(h);
+}
+
+async function verifyKey(masterKey) {
+  const check = localStorage.getItem(STORAGE_KEYS.KEY_CHECK);
+  if (!check) return false;
+  const expected = keyCheckHash(masterKey);
+  return check === expected;
+}
+
+/* ==================== ابزار ==================== */
+function setMsg(id, text, type) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'msg ' + (type || '');
+}
+function showPage(id) {
+  ['loginPage','registerPage','userPage','adminPage','masterKeyPage','setupKeyPage']
+    .forEach(p => document.getElementById(p).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+/* ==================== شروع ==================== */
+async function init() {
+  // اگه هنوز Master Key ست نشده، برو به صفحه راه‌اندازی
+  if (!localStorage.getItem(STORAGE_KEYS.KEY_CHECK)) {
+    showPage('setupKeyPage');
+    return;
+  }
+  showPage('loginPage');
+}
+
+/* ==================== راه‌اندازی Master Key ==================== */
+async function setupMasterKey() {
+  const k1 = document.getElementById('setupKey1').value;
+  const k2 = document.getElementById('setupKey2').value;
+
+  if (!k1 || !k2) return setMsg('setupMsg', 'هر دو فیلد را پر کنید', 'error');
+  if (k1.length < 12) return setMsg('setupMsg', 'کلید حداقل ۱۲ کاراکتر باشد', 'error');
+  if (k1 !== k2) return setMsg('setupMsg', 'دو کلید یکسان نیستند', 'error');
+
+  setMsg('setupMsg', 'در حال ساخت...', 'info');
+
+  try {
+    // ذخیره hash کلید
+    localStorage.setItem(STORAGE_KEYS.KEY_CHECK, keyCheckHash(k1));
+
+    // ساخت داده‌ی خالی
+    const emptyData = { users: [], licenses: [] };
+    await saveData(emptyData, k1);
+
+    setMsg('setupMsg', '✅ کلید ساخته شد! حالا وارد شو.', 'success');
+    setTimeout(() => {
+      document.getElementById('setupKey1').value = '';
+      document.getElementById('setupKey2').value = '';
+      setMsg('setupMsg', '', '');
+      showPage('loginPage');
+    }, 2000);
+  } catch (e) {
+    setMsg('setupMsg', 'خطا: ' + e.message, 'error');
+  }
+}
+
+/* ==================== باز کردن با Master Key ==================== */
+async function unlockWithKey() {
+  const key = document.getElementById('masterKeyInput').value;
+  if (!key) return setMsg('keyMsg', 'کلید را وارد کنید', 'error');
+
+  setMsg('keyMsg', 'در حال بررسی...', 'info');
+
+  try {
+    if (!(await verifyKey(key))) {
+      return setMsg('keyMsg', '❌ کلید اشتباه است', 'error');
+    }
+
+    // تست رمزگشایی
+    const data = await loadData(key);
+
+    CURRENT_KEY = key;
+    CURRENT_DATA = data;
+    KEY_UNLOCKED_AT = Date.now();
+
+    document.getElementById('masterKeyInput').value = '';
+    setMsg('keyMsg', '', '');
+
+    showPage('adminPage');
+    loadLicenses();
+    updateKeyTime();
+  } catch (e) {
+    setMsg('keyMsg', '❌ خطا در رمزگشایی (کلید اشتباه؟)', 'error');
+  }
+}
+
+function updateKeyTime() {
+  const info = document.getElementById('keyTimeInfo');
+  if (!info || !KEY_UNLOCKED_AT) return;
+  const mins = Math.floor((Date.now() - KEY_UNLOCKED_AT) / 60000);
+  info.textContent = `از ${mins} دقیقه پیش باز شده`;
+}
+
+/* ==================== لاگین ==================== */
+async function doLogin() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if (!username || !password) return setMsg('loginMsg', 'همه فیلدها را پر کنید', 'error');
+
+  setMsg('loginMsg', 'در حال بررسی...', 'info');
+  const hwid = await getHWID();
+
+  // ادمین
+  if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+    setMsg('loginMsg', '', '');
+    showPage('masterKeyPage');
+    return;
+  }
+
+  // کاربر عادی: نیاز به رمزگشایی داده داره
+  // از ادمین کلید می‌گیریم — ولی اینجا کاربر نمی‌تونه کلید رو بده
+  // پس کاربر باید توسط ادمین اضافه شده باشه و ادمین یه کلید موقت بده
+  // راه‌حل: کلید ذخیره‌شده در sessionStorage از قبل (وقتی ادمین لاگین بوده)
+
+  let userKey = sessionStorage.getItem('temp_user_key');
+  let masterKeyForUser = CURRENT_KEY || userKey;
+
+  if (!masterKeyForUser) {
+    return setMsg('loginMsg', '❌ برای ورود، اول ادمین باید سیستم رو باز کنه', 'error');
+  }
+
+  try {
+    const data = await loadData(masterKeyForUser);
+    const user = data.users.find(u => u.username === username && u.password === password);
+
+    if (!user) return setMsg('loginMsg', 'نام کاربری یا رمز اشتباه است', 'error');
+
+    if (user.hwid && user.hwid !== hwid) {
+      return setMsg('loginMsg', '❌ این اکانت روی دستگاه دیگری قفل شده است', 'error');
+    }
+
+    if (!user.hwid) {
+      user.hwid = hwid;
+      await saveData(data, masterKeyForUser);
+    }
+
+    CURRENT_KEY = masterKeyForUser;
+    CURRENT_DATA = data;
+
+    setMsg('loginMsg', '', '');
+    showPage('userPage');
+    renderUserPanel(username);
+  } catch (e) {
+    setMsg('loginMsg', '❌ خطا در رمزگشایی', 'error');
+  }
+}
+
+/* ==================== پنل کاربر ==================== */
+function renderUserPanel(username) {
+  document.getElementById('userInfo').innerHTML = `
+    <div class="item" style="border-left-color:#27ae60;">
+      <div>
+        <div style="font-size:15px;font-weight:bold;color:#1e3c72;">✅ خوش آمدی، ${username}</div>
+        <div style="font-size:12px;color:#666;margin-top:6px;">ورود موفق بود</div>
+      </div>
+    </div>
+    <p style="font-size:13px;color:#888;text-align:center;margin-top:20px;">
+      اینجا می‌تونی محتوای پنل کاربری رو بعداً اضافه کنی
+    </p>
+  `;
+}
+
+/* ==================== ثبت‌نام ==================== */
+async function doRegister() {
+  const license = document.getElementById('regLicense').value.trim();
+  const username = document.getElementById('regUsername').value.trim();
+  const password = document.getElementById('regPassword').value;
+
+  if (!license || !username || !password) {
+    return setMsg('regMsg', 'همه فیلدها را پر کنید', 'error');
+  }
+  if (username === ADMIN_USERNAME) {
+    return setMsg('regMsg', '❌ این نام کاربری رزرو شده است', 'error');
+  }
+  if (username.length < 3) return setMsg('regMsg', 'نام کاربری حداقل ۳ کاراکتر', 'error');
+  if (password.length < 4) return setMsg('regMsg', 'رمز حداقل ۴ کاراکتر', 'error');
+
+  // کاربر نمی‌تونه بدون باز بودن پنل ادمین ثبت‌نام کنه
+  if (!CURRENT_KEY) {
+    return setMsg('regMsg', '❌ برای ثبت‌نام، ادمین باید سیستم را باز کند', 'error');
+  }
+
+  setMsg('regMsg', 'در حال ثبت‌نام...', 'info');
+  const hwid = await getHWID();
+
+  try {
+    const data = await loadData(CURRENT_KEY);
+
+    const licIndex = data.licenses.findIndex(l => l.code === license);
+    if (licIndex === -1) return setMsg('regMsg', '❌ لایسنس نامعتبر است', 'error');
+
+    const lic = data.licenses[licIndex];
+    if (lic.type === 'single' && lic.usedBy) {
+      return setMsg('regMsg', '❌ این لایسنس قبلاً استفاده شده', 'error');
+    }
+
+    if (data.users.find(u => u.username === username)) {
+      return setMsg('regMsg', '❌ این نام کاربری قبلاً گرفته شده', 'error');
+    }
+
+    data.users.push({
+      id: Date.now(),
+      username,
+      password,
+      license: license,
+      hwid,
+      createdAt: Date.now()
+    });
+
+    data.licenses[licIndex].usedBy = username;
+    data.licenses[licIndex].hwid = hwid;
+
+    await saveData(data, CURRENT_KEY);
+    CURRENT_DATA = data;
+
+    setMsg('regMsg', '✅ ثبت‌نام موفق! حالا وارد شوید', 'success');
+    setTimeout(() => {
+      document.getElementById('loginUsername').value = username;
+      document.getElementById('regLicense').value = '';
+      document.getElementById('regUsername').value = '';
+      document.getElementById('regPassword').value = '';
+      showPage('loginPage');
+      setMsg('regMsg', '', '');
+    }, 1500);
+  } catch (e) {
+    setMsg('regMsg', '❌ خطا', 'error');
+  }
+}
+
+/* ==================== ادمین ==================== */
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.tab[data-tab="${name}"]`).classList.add('active');
+
+  ['licenses','users','backup','security'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
+  });
+
+  if (name === 'licenses') loadLicenses();
+  if (name === 'users') loadUsers();
+  if (name === 'security') updateKeyTime();
+}
+
+async function generateLicense() {
+  if (!CURRENT_DATA || !CURRENT_KEY) return;
+  const type = document.querySelector('input[name="licType"]:checked').value;
+  const code = makeCode();
+
+  CURRENT_DATA.licenses.push({
+    id: Date.now(),
+    code,
+    type,
+    usedBy: null,
+    hwid: null,
+    createdAt: Date.now()
+  });
+
+  await saveData(CURRENT_DATA, CURRENT_KEY);
+  setMsg('adminMsg', '✅ لایسنس ساخته شد: ' + code, 'success');
+  loadLicenses();
+  setTimeout(() => setMsg('adminMsg', '', ''), 3000);
+}
+
+function loadLicenses() {
+  if (!CURRENT_DATA) return;
+  const licenses = CURRENT_DATA.licenses;
+  const list = document.getElementById('licenseList');
+
+  if (licenses.length === 0) {
+    list.innerHTML = '<div class="empty">هنوز لایسنسی ساخته نشده</div>';
+    return;
+  }
+
+  list.innerHTML = licenses.slice().reverse().map(l => `
+    <div class="item ${l.usedBy ? 'used' : ''}">
+      <div>
+        <div class="code">${l.code}</div>
+        ${l.usedBy
+          ? `<div style="color:#e74c3c;font-size:11px;margin-top:4px;">استفاده شده توسط: ${l.usedBy}</div>`
+          : '<div style="color:#27ae60;font-size:11px;margin-top:4px;">آزاد</div>'}
+      </div>
+      <div class="row-actions">
+        <span class="type ${l.type === 'unlimited' ? 'unlimited' : ''}">
+          ${l.type === 'unlimited' ? 'نامحدود' : 'تک‌کاربره'}
+        </span>
+        <button class="btn btn-sm" onclick="copyText('${l.code}','adminMsg')">کپی</button>
+        <button class="btn btn-red btn-sm" onclick="deleteLicense(${l.id})">حذف</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function loadUsers() {
+  if (!CURRENT_DATA) return;
+  const users = CURRENT_DATA.users;
+  const list = document.getElementById('userList');
+
+  if (users.length === 0) {
+    list.innerHTML = '<div class="empty">هنوز کاربری ثبت‌نام نکرده</div>';
+    return;
+  }
+
+  list.innerHTML = users.slice().reverse().map(u => `
+    <div class="item">
+      <div>
+        <div style="font-weight:bold;color:#1e3c72;font-size:14px;">${u.username}</div>
+        <div style="font-size:11px;color:#666;margin-top:4px;">لایسنس: <span class="code">${u.license}</span></div>
+        <div style="font-size:10px;color:#999;margin-top:4px;word-break:break-all;">
+          HWID: ${u.hwid ? u.hwid.slice(0, 16) + '...' : 'ثبت نشده'}
+        </div>
+      </div>
+      <div class="row-actions">
+        <button class="btn btn-sm" onclick="resetHwid(${u.id})">ریست HWID</button>
+        <button class="btn btn-red btn-sm" onclick="deleteUser(${u.id})">حذف</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function deleteLicense(id) {
+  if (!confirm('لایسنس حذف شود؟')) return;
+  CURRENT_DATA.licenses = CURRENT_DATA.licenses.filter(l => l.id !== id);
+  await saveData(CURRENT_DATA, CURRENT_KEY);
+  loadLicenses();
+}
+
+async function deleteUser(id) {
+  if (!confirm('کاربر حذف شود؟')) return;
+  const user = CURRENT_DATA.users.find(u => u.id === id);
+  if (!user) return;
+
+  CURRENT_DATA.users = CURRENT_DATA.users.filter(u => u.id !== id);
+
+  const lic = CURRENT_DATA.licenses.find(l => l.code === user.license);
+  if (lic) {
+    lic.usedBy = null;
+    lic.hwid = null;
+  }
+
+  await saveData(CURRENT_DATA, CURRENT_KEY);
+  loadUsers();
+}
+
+async function resetHwid(id) {
+  if (!confirm('HWID ریست شود؟')) return;
+  const user = CURRENT_DATA.users.find(u => u.id === id);
+  if (user) {
+    user.hwid = null;
+    await saveData(CURRENT_DATA, CURRENT_KEY);
+  }
+  loadUsers();
+}
+
+/* ==================== بکاپ رمزنگاری‌شده ==================== */
+async function downloadBackup() {
+  if (!CURRENT_DATA || !CURRENT_KEY) return;
+
+  const payload = {
+    version: 1,
+    exportedAt: Date.now(),
+    data: CURRENT_DATA
+  };
+
+  const encrypted = await encrypt(payload, CURRENT_KEY);
+
+  const blob = new Blob([encrypted], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `backup-encrypted-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  setMsg('backupMsg', '✅ بکاپ رمزنگاری‌شده دانلود شد', 'success');
+  setTimeout(() => setMsg('backupMsg', '', ''), 2000);
+}
+
+function uploadBackup(ev) {
+  const file = ev.target.files[0];
+  if (!file) return;
+
+  if (!confirm('⚠️ همه‌ی داده‌های فعلی پاک میشن. مطمئنی؟')) {
+    ev.target.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const encrypted = e.target.result.trim();
+      const payload = await decrypt(encrypted, CURRENT_KEY);
+
+      if (!payload.data || !Array.isArray(payload.data.users)) {
+        throw new Error('ساختار نامعتبر');
+      }
+
+      CURRENT_DATA = payload.data;
+      await saveData(CURRENT_DATA, CURRENT_KEY);
+
+      setMsg('backupMsg', '✅ بازیابی موفق', 'success');
+      loadLicenses();
+      setTimeout(() => setMsg('backupMsg', '', ''), 2000);
+    } catch (err) {
+      setMsg('backupMsg', '❌ فایل نامعتبر یا کلید اشتباه', 'error');
+    }
+  };
+  reader.readAsText(file);
+  ev.target.value = '';
+}
+
+/* ==================== تغییر Master Key ==================== */
+async function changeMasterKey() {
+  const oldKey = document.getElementById('oldKey').value;
+  const newKey1 = document.getElementById('newKey1').value;
+  const newKey2 = document.getElementById('newKey2').value;
+
+  if (!oldKey || !newKey1 || !newKey2) return setMsg('changeKeyMsg', 'همه فیلدها را پر کنید', 'error');
+  if (newKey1.length < 12) return setMsg('changeKeyMsg', 'کلید جدید حداقل ۱۲ کاراکتر', 'error');
+  if (newKey1 !== newKey2) return setMsg('changeKeyMsg', 'دو کلید جدید یکسان نیستند', 'error');
+  if (oldKey !== CURRENT_KEY) return setMsg('changeKeyMsg', '❌ کلید فعلی اشتباه است', 'error');
+
+  try {
+    await saveData(CURRENT_DATA, newKey1);
+    localStorage.setItem(STORAGE_KEYS.KEY_CHECK, keyCheckHash(newKey1));
+    CURRENT_KEY = newKey1;
+
+    document.getElementById('oldKey').value = '';
+    document.getElementById('newKey1').value = '';
+    document.getElementById('newKey2').value = '';
+    setMsg('changeKeyMsg', '✅ کلید با موفقیت تغییر کرد', 'success');
+    setTimeout(() => setMsg('changeKeyMsg', '', ''), 2000);
+  } catch (e) {
+    setMsg('changeKeyMsg', 'خطا: ' + e.message, 'error');
+  }
+}
+
+function lockPanel() {
+  CURRENT_KEY = null;
+  CURRENT_DATA = null;
+  KEY_UNLOCKED_AT = null;
+  showPage('masterKeyPage');
+}
+
+/* ==================== ابزار ==================== */
+function copyText(text, msgId) {
+  navigator.clipboard.writeText(text);
+  setMsg(msgId, '📋 کپی شد: ' + text, 'success');
+  setTimeout(() => setMsg(msgId, '', ''), 1500);
+}
+
+function makeCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const seg = () => Array.from({ length: 4 }, () =>
+    chars[Math.floor(Math.random() * chars.length)]).join('');
+  return `${seg()}-${seg()}-${seg()}-${seg()}`;
+}
+
+function logout() {
+  CURRENT_KEY = null;
+  CURRENT_DATA = null;
+  KEY_UNLOCKED_AT = null;
+  sessionStorage.removeItem('temp_user_key');
+  document.getElementById('loginUsername').value = '';
+  document.getElementById('loginPassword').value = '';
+  document.getElementById('masterKeyInput').value = '';
+  setMsg('loginMsg', '', '');
+  setMsg('keyMsg', '', '');
+  showPage('loginPage');
+}
+
+/* ==================== اجرا ==================== */
+init();
+
+setInterval(updateKeyTime, 60000);
+</script>
+</body>
+</html>
